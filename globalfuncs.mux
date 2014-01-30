@@ -1,0 +1,59 @@
+# Global functions.
+# These should all be added with @function afterwards.
+#
+# HEADER | FOOTER | LINE | SUBHEADER | SUBFOOTER | SUBLINE
+# Arguments for headers/footers:
+# %0 - text
+# %1 - length, defaults to 78
+# Arguments for lines:
+# %0 - length, defaults to 78
+# Registers:
+# %ql - length
+&HEADER GFO=
+    [setq(l,if(%1,%1,78))]
+    %xh%xy/
+    %xb[repeat(=,5)]
+    [ljust(
+        if(%0,%xy/%xw [left(%0,sub(%ql,18))] %xy/)
+    ,sub(%ql,7),%xb=)]
+    %xh%xy/
+-
+&FOOTER GFO=
+    [setq(l,if(%1,%1,78))]
+    %xh%xy/
+    [rjust(
+        if(%0,%xy/%xw [left(%0,sub(%ql,18))] %xy/)
+    ,sub(%ql,7),%xb=)]
+    %xh%xb[repeat(=,5)]
+    %xy/
+-
+&LINE GFO=
+    [setq(l,if(%0,%0,78))]
+    %xh%xy/
+    %xh%xb[repeat(=,sub(%ql,2))]
+    %xy/
+-
+&SUBHEADER GFO=
+    [setq(l,if(%1,%1,78))]
+    %xh%xy/
+    %xb[repeat(-,5)]
+    [ljust(
+        if(%0,%xy<%xw [left(%0,sub(%ql,18))] %xy>)
+    ,sub(%ql,7),%xb-)]
+    %xh%xy/
+-
+&SUBFOOTER GFO=
+    [setq(l,if(%1,%1,78))]
+    %xh%xy/
+    [rjust(
+        if(%0,%xy<%xw [left(%0,sub(%ql,18))] %xy>)
+    ,sub(%ql,7),%xb-)]
+    %xh%xb[repeat(-,5)]
+    %xy/
+-
+&SUBLINE GFO=
+    [setq(l,if(%0,%0,78))]
+    %xh%xy/
+    %xh%xb[repeat(-,sub(%ql,2))]
+    %xy/
+-
