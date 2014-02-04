@@ -1,0 +1,26 @@
+# TODO: Make the exits properly work variable-width.
+# Requires the 'shortdesc' attribute to be set visual by Wizard.
+@NameFormat Room Parent=[header([name(me)],getwidth(%#))]
+-
+&FN_FOOTER Room Parent=[footer([if(or(controls(%#,me),hasflag(me,jump_ok),hasflag(me,chown_ok),hasflag(me,abode)), [num(me)])],getwidth(%#))]
+-
+&FN_HASEXITS Room Parent=t(lexits(me))
+-
+@Succ Room Parent=if(or([u(fn_hascontents)],[u(fn_hasexits)]),,u(fn_footer))
+-
+&FN_HASCONTENTS Room Parent=t(lcon(me))
+-
+@ConFormat Room Parent=[setq(p,sortby(fn_playersort,filter(fn_isplayer,%0)))][setq(o,setdiff(%0,%qp))][if(%qp,[subheader(Connected Players,getwidth(%#))]%R[iter(%qp [if(strmatch(num(me),loc(%#)),%#)],u(fn_player,##),,%R)])][if(%qo,[if(%qp,%R)][subheader(Identifiable Objects,getwidth(%#))]%R[trim(columns(iter(%qo,u(fn_object,##),,|),26,|),r,%R)])][if(lexits(me),,%R[u(fn_footer)])]
+-
+@ExitFormat Room Parent=[subheader(Obvious Exits,getwidth(%#))]%R[columns(iter(%0,%b[u(fn_exit,##)],,|),26,|)][u(fn_footer)]
+-
+&FN_EXIT Room Parent=[setq(0,fullname(%0))][if(gt(words(%q0,;),1),[setq(1,ucstr(elements(%q0,2,;)))],[setq(1,left(%q0,1))])][name(%0)] %xh%xg<%xn%q1%xh%xg>%xn
+-
+&FN_ISPLAYER Room Parent=hastype(%0,player)
+-
+&FN_PLAYER Room Parent=%b[ljust(name(%0),14)] [rjust(singletime(idle(%0)),4)] [ljust(get(%0/shortdesc),sub(getwidth(%#),22))]
+-
+&FN_PLAYERSORT Room Parent=[sub(idle(%0),idle(%1))]
+-
+&FN_OBJECT Room Parent=%b[name(%0)]
+-
