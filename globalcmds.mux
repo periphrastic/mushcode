@@ -1,0 +1,101 @@
+# Global commands.
+# Requires the functions under Global Functions to be added using @function.
+#
+&CMD_OOC #5=
+	$ooc *:
+	@remit [loc(%#)]=
+	%xh%xy<%xnOOC%xh%xy>%xn 
+	[switch(
+		%0,
+		:*,
+		[name(%#)] [rest(%0,:)],
+		;*,
+		[name(%#)][rest(%0,;)],
+		|*,
+		[rest(%0,|)] %[[name(%#)]%],
+		[name(%#)] says%, "%0"
+	)]
+-
+&CMD_+FINGER #5=
+	$+finger *:
+		@switch 
+			[setq(0,[ifelse([strmatch(%0,me)],%#,[pmatch(%0)])])]
+			[isdbref(%q0)]
+			=1,
+			{@pemit %#=
+				[header(Information on [name(%q0)],getwidth(%#))]%r
+				%b[ljust(
+					[if(
+						hasflag(%q0,connected),
+						%xhIdle:%xn [singletime(idle(%q0))],
+						%xhOffline:%xn [singletime(sub(secs(),connleft(%q0)))]
+					)]
+				,15)] 
+				[ljust(%xhAlias:%xn [get(%q0/alias)],18)] 
+				[ljust(%xhTimezone:%xn [get(%q0/finger_timezone)],18)] 
+				[ljust(%xhUnread:%xn [extract([mail(%q0)],2,1)],12)] 
+				%xhGender:%xn [strtrunc(default(%q0/sex,?),1)]%r
+				[divider(getwidth(%#))]%r
+				[if(hasattr(%q0,shortdesc),%b%xh[ljust(Appearance:,15)]%xn [get(%q0/shortdesc)]%R)]
+				[setq(1,setdiff([lattr(%q0/finger_*)],FINGER_TIMEZONE))]
+				[if(
+					%q1,
+					[iter(%q1,%b%xh[ljust([capstr([lcstr([after(##,_)])])]:,15)]%xn [objeval(%q0,u(%q0/##))], ,%r)],
+					%b[name(%q0)] has not provided any other public information.
+				)]%r
+				[if(istaff(%#),
+					[subheader(Staff-Only Information,getwidth(%#))]%R
+					%b[ljust(%xhLast site:%xn,15)] [get(%q0/lastsite)]%R
+				)]
+				[line(getwidth(%#))]
+			},
+			0,
+			@pemit %#=[gamepref()] That player does not exist.}
+-
+&CMD_+LAST #5=
+	$+last *:
+		@switch 
+			[setq(0,[ifelse([strmatch(%0,me)],%#,[pmatch(%0)])])]
+			[isdbref(%q0)]
+			=1,
+			{@pemit %#=
+				[gamepref()] [name(%q0)] last disconnected on [timefmt($a\, $b $d\, $Y\, at $I:$M$P Eastern.,connleft(%q0))]
+			},
+			0,
+			@pemit %#=[gamepref()] That player does not exist.}		
+-
+&CMD_+WHERE #5=
+	$+where:
+		@pemit %#=
+		[header(Player Locations,getwidth(%#))]%r
+		[setq(0,objeval(%#,lwho()))]
+		[setq(f,filter(fn_isfindable,%q0))]
+		[setq(u,setdiff(%q0,%qf))]
+		[setq(l,unique(iter(%qf,loc(##))))]
+		[if(%qf,
+		[iter(%ql,
+			[setq(c,setinter(%qf,lcon(##)))]
+			%b[ljust([name(##)]:,34)]%b
+			[u(FN_WHERENAMES,%qc)]
+		,,%r)]%r
+		)]
+		[if(t(%qu),
+			%b[ljust(Unfindable:,34)]%b
+			[u(FN_WHERENAMES,%qu)]%R
+		)]
+		[footer([words(%qf)] findable players,getwidth(%#))]
+-
+&FN_ISFINDABLE #5=
+	findable(%#,%0)
+-
+&FN_WHERENAMES #5=
+	[trim(
+	varcolumn(
+		iter(%0,name(##),,|),
+		14,
+		getwidth(%#),
+		36,
+		|
+	)
+	,l,%b)]
+-

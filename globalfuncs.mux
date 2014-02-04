@@ -1,5 +1,6 @@
 # Global functions.
-# These should all be added with @function afterwards.
+# These should all be added with @function/preserve afterwards.
+# GFO = Global Function Object, change as needed.
 #
 # HEADER | FOOTER | LINE | SUBHEADER | SUBFOOTER | SUBLINE
 # Arguments for headers/footers:
@@ -51,9 +52,41 @@
     %xh%xb[repeat(-,5)]
     %xy/
 -
-&SUBLINE GFO=
+&DIVIDER GFO=
     [setq(l,if(%0,%0,78))]
     %xh%xy/
     %xh%xb[repeat(-,sub(%ql,2))]
     %xy/
+-
+&GAMEPREF GFO=
+	GAME:%b
+-
+&GETWIDTH GFO=
+	if(hasflag(%0,nowidth),78,width(%0))
+-
+&UNIQUE GFO=
+	setunion(%0,)
+-
+# list, field width, line length, indent, delimiter
+# %0 - list
+# %1 - field width
+# %2 - line length
+# %3 - indent
+# %4 - delimiter
+&VARCOLUMN GFO=
+	[trim(trim([repeat(%b,%3)]
+	[setq(l,sub(%2,%3))]
+	[setq(0,0)]
+	[edit(iter(%0,
+		[ljust(##,sub(%1,1))]%b
+		[if(
+			[setq(0,add(%q0,%1))][gt(%q0,sub(%ql,%1))],
+			%R[repeat(%b,%3)][setq(0,0)],
+			
+		)]
+	,%4,~~FIX~ITER~DELIM~~),~~FIX~ITER~DELIM~~,)],r,%b),r,%r)]
+-
+@dolist DIVIDER FOOTER GAMEPREF HEADER LINE SUBFOOTER SUBHEADER UNIQUE VARCOLUMN=@function/preserve ##=GFO/##
+-
+@dolist GETWIDTH=@function/privilege/preserve ##=GFO/##
 -
