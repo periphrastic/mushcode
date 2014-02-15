@@ -86,7 +86,49 @@
 		)]
 	,%4,~~FIX~ITER~DELIM~~),~~FIX~ITER~DELIM~~,)],r,%b),r,%r)]
 -
-@dolist DIVIDER FOOTER GAMEPREF HEADER LINE SUBFOOTER SUBHEADER UNIQUE VARCOLUMN=@function/preserve ##=GFO/##
+&ISSTAFF GFO=
+	orflags(%0,WwZ)
+-
+&PLAYERID GFO=
+	[setr(0,pmatch(%0))]:[convtime(ctime(%0))]
+-
+&IDPLAYER GFO=
+	[first(%0,:)]
+-
+# %0:  List of data.
+# %1:  List of widths.
+# %2:  Input delimiter.
+# %3:  Output delimiter.
+&FIELDFMT GFO=
+	[iter(
+		lnum(1,words(%0,%2)),
+		[ljust(
+			extract(%0,##,1,%2),
+			extract(%1,##,1)	
+		)]
+	
+	)]
+	
+-
+&PARSEREG GFO=
+	iter(lnum(1,words(%0,%2)),
+		setq(
+			extract(%1,##,1),
+			extract(%0,##,1,%2)
+		)
+	,,@@)
+-
+&PLURALIZE GFO=
+	[if(strmatch(%0,1),
+		%0 %1,
+		%0 %2)]
+-
+&SQLESCAPE GFO=
+	edit(edit(%0,',\\'),\,,\\\,)
+-
+@dolist PARSEREG=@function ##=GFO/##
+-
+@dolist DIVIDER FOOTER GAMEPREF HEADER LINE SUBFOOTER SUBHEADER UNIQUE VARCOLUMN ISSTAFF PLAYERID IDPLAYER FIELDFMT PLURALIZE SQLESCAPE=@function/preserve ##=GFO/##
 -
 @dolist GETWIDTH=@function/privilege/preserve ##=GFO/##
 -
