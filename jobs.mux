@@ -1,0 +1,266 @@
+### TODO: Access restrictions based on tags.
+### TODO: Search based on tags, date, assignment, etc.
+### TODO: Staff checking and staff-only features.
+### TODO: Cleanup and get object setup commands in place.
+
+### SETUP: Object Setup
+### These commands handle the initial setup of the jobs system.
+@parent jco=jqo
+-
+### END
+
+### QUERY: List Jobs
+### Get lists of jobs for summaries.
+### Returns, in order: read/unread, ID, title, assigned-to player ID, priority, due date, post time, and a list of tags
+&SQL_LISTJOBS JQO=
+	SELECT 
+	SQL_CALC_FOUND_ROWS IF( (SELECT v.viewtime from jobs_views v where v.player = '%0' AND v.job = j.id) < j.lastupdated,1,0) ,
+		j.id, j.title, a.player, j.priority, UNIX_TIMESTAMP(j.duedate), UNIX_TIMESTAMP(j.posttime),
+		GROUP_CONCAT(t.tag SEPARATOR ' ') as taglist 
+		 
+	FROM jobs_jobs j 
+	LEFT JOIN jobs_assignedto a ON j.id = a.job 
+	LEFT JOIN jobs_jobtags t ON j.id = t.job 
+	WHERE j.archived = False 
+	GROUP BY j.id 
+	ORDER BY j.id ASC 
+	LIMIT 0, 25
+;
+-
+### END
+
+### QUERY: Create New Job
+&SQL_NEWJOB JQO=
+### Create a new job.
+### Sets the due date to five days in the future by default.
+	INSERT INTO jobs_jobs (author, title, text, posttime, duedate) VALUES (
+		'%0', 
+		'%1', 
+		'%2', 
+		NOW(),
+		ADDDATE(NOW(),5)
+		);
+-
+### END
+
+### QUERY: Add Player to a Job
+&SQL_ADDPLAYER JQO=
+	INSERT INTO jobs_jobplayers (job, player) VALUES (%0, '%1');
+-
+### END
+
+### QUERY: Add Tag to a Job
+&SQL_ADDTAG JQO=
+	INSERT INTO jobs_jobtags (job, tag) VALUES (%0, '%1');
+-
+### END
+
+### QUERY: Remove Player from a Job
+&SQL_REMPLAYER JQO=
+	DELETE FROM jobs_jobplayers WHERE job = %0 AND player = '%1';
+-
+### END
+
+### QUERY: Remove Tag from a Job
+&SQL_REMTAG JQO=
+	DELETE FROM jobs_jobtags WHERE job = %0 AND tag = '%1';
+-
+### END
+
+### QUERY: Add New Tag
+&SQL_NEWTAG JQO=
+	INSERT INTO jobs_tags (id) VALUES ('%0');
+-
+### END
+
+### QUERY: Get Job Data
+&SQL_GETJOB JQO=
+	SELECT j.title, UNIX_TIMESTAMP(j.posttime), j.author, j.text, UNIX_TIMESTAMP(j.duedate), a.player, 
+		GROUP_CONCAT(t.tag SEPARATOR ' ') as taglist 
+	FROM jobs_jobs j 
+	LEFT JOIN jobs_assignedto a ON j.id = a.job 
+	LEFT JOIN jobs_jobtags t ON j.id = t.job 
+	WHERE j.id = %0;
+-
+### END
+
+### QUERY: Update View Time
+&SQL_PINGVIEW JQO=
+	REPLACE jobs_views SET job = %0, player = '%1';
+-
+### END
+
+### QUERY: Assign Job to Player
+&SQL_JOBASSIGN JQO=
+	REPLACE jobs_assignedto SET job = %0, player = '%1';
+-
+### END
+
+### COMMAND: Create New Job
+&CMD_NEWJOB JCO=
+	$+request *=*:
+		@eval 
+			[setq(0,playerid(%#))]
+			[sql(u(SQL_NEWJOB,%q0,sqlescape(%0),sqlescape(%1)))] [setq(1,sql(select last_insert_id()))]
+			[sql(u(SQL_ADDPLAYER,%q1,%q0))] [sql(u(SQL_PINGVIEW,%q1,%q0))] ;
+		@pemit %#=You have created job %q1.
+-
+### END
+
+### COMMAND: List Jobs
+&CMD_LISTJOBS JCO=
+	$+jobs:
+		@pemit %#=
+			[header(The Very In Progress Jobs List)]%R
+			%b* [ljust(ID,6)] [ljust(Title,38)] [ljust(Assigned,15)] [ljust(!,2)] Due %R
+			[divider()]%R
+
+### Returns, in order: read/unread, ID, title, assigned-to player ID, priority, due date, post time, and a list of tags
+			[iter(
+				setr(z,sql(u(SQL_LISTJOBS,playerid(%#)),|||,~~~)),
+### REGISTERS:
+### %q0 - 1 for new activity, 0 for none
+### %q1 - job number
+### %q2 - job title
+### %q3 - assignee ID
+### %q4 - Priority
+### %q5 - due date
+### %q6 - post time (not currently used)
+### %q7 - list of tags, space separated (not currently used)
+### %qz - original results of job list query
+				[parsereg(##,0 1 2 3 4 5 6 7,~~~)]
+				%b[fieldfmt(
+					[if(%q0,*,\-)]|
+					%q1|
+					%q2|
+					[name(idplayer(%q3))]|
+					[switch(%q4,High,3,Medium,2,Low,1,Hold,H)]|
+					[timefmt($x,%q5)]
+				,1 6 38 15 2 8,|)]
+			,|||,%R)]
+
+			%R
+			[footer([words(%qz,|||)] of [pluralize(sql(u(SQL_TOTALROWS)),job,jobs)])]
+-
+### END
+
+### COMMAND: Get Job
+&CMD_GETJOB JCO=
+	$+job *:
+### TODO: rest
+### Check to see if job exists.
+### Check to see if you are allowed to see the job.
+### Check to see if you are staff and give you the staff version if so.
+		@switch [strmatch(%0,*/*)]=
+			1,
+			{
+				@switch 
+					[setq(0,first(%0,/))]
+					[setq(1,rest(%0,/))]
+					[setq(2,sql(u(SQL_COUNTCOMMENTS,%q0)))]
+					[setq(3,inc(div(%q2,10)))]
+					[lte(%q1,%q3)]=
+					0,
+					{@pemit %#=There are only %q3 pages of results.},
+					{@tr me/tr_getjob=%q0,%#,[mul(dec(%q1),10)],10}
+				
+			},
+			{@tr me/tr_getjob=%0,%#,0,10}
+-
+### END
+
+### TRIGGER: Get Job
+&TR_GETJOB JCO=
+		@pemit %1=		
+		[sql(u(SQL_PINGVIEW,%0,playerid(%1)))]
+### REGISTERS:
+### %0 - job #
+### %1 - enactor
+### %2 - starting comment #
+### %3 - how many results per page
+### %q0 - title
+### %q1 - create time in secs
+### %q2 - creator ID
+### %q3 - job text
+### %q4 - due date in secs
+### %q5 - assignee ID
+### %q6 - list of tags, space-separated
+		[parsereg(sql(u(SQL_GETJOB,%0),|),0 1 2 3 4 5 6,|)]
+		[header(Job %0: %q0)]%R%B
+		Created by: [name(idplayer(%q2))]%R%B
+		Created: [timefmt($c,%q1)]%R%B
+		Due: [timefmt($x,%q4)]%R%B
+		Assigned to: [name(idplayer(%q5))]%R%B
+		Tags: %q6 %R
+		[divider()]%R%B
+		%q3 %R
+		[iter(
+### Reversed to show most recent activity at the bottom without losing total.
+		setr(7,revwords(sql(u(SQL_LISTCOMMENTS,%0,%2,%3),|||,~~~),|||)),
+### REGISTERS:
+### %q7 - original text of comment list query
+### %qa - comment # (show on staff version to allow publish/unpublish command)
+### %qb - commenter ID
+### %qc - text of comment
+### %qd - comment time in secs
+				[parsereg(itext(0),a b c d,~~~)]
+				[subheader([name(idplayer(%qb))] @ [convsecs(%qd))]%R%B
+				%qc
+		,|||,%R)]%R
+		
+		[footer(
+			[words(%q7,|||)] of [pluralize(sql(u(SQL_TOTALROWS)),comment,comments)]
+		)]
+-
+### END
+
+### COMMAND: Assign Job
+&CMD_ASSIGNJOB JCO=
+	$+job/assign *=*:
+		@eval 
+			[setq(0,playerid(%1))]
+			[sql(u(SQL_JOBASSIGN,%0,%q0))];
+		@pemit %#=Job assigned.
+-
+### END
+
+### COMMAND: Add New Job
+&CMD_JOBADD JCO=
+	$+job/add *=*:
+		@eval [sql(u(SQL_ADDCOMMENT,%0,[playerid(%#)],[sqlescape(%1)]))];
+		@pemit %#=Comment added.
+-
+### END
+
+### QUERY: Add Comment
+&SQL_ADDCOMMENT JQO=
+	INSERT INTO jobs_comments (job, author, text, published) VALUES (
+		%0,
+		'%1',
+		'%2',
+		True
+	);
+-
+### END
+
+### QUERY: List Comments for a Job
+&SQL_LISTCOMMENTS JQO=
+	SELECT SQL_CALC_FOUND_ROWS id, author, text, UNIX_TIMESTAMP(commenttime)   
+	FROM jobs_comments 
+	WHERE job = %0 
+	ORDER BY commenttime DESC 
+	LIMIT %1, %2
+-
+### END
+
+### QUERY: Get Count of Rows
+&SQL_TOTALROWS JQO=
+	SELECT found_rows();
+-
+### END
+
+### QUERY: Count Total Comments
+&SQL_COUNTCOMMENTS JQO=
+	SELECT COUNT(*) FROM jobs_comments WHERE job = %0;
+-
+### END
